@@ -857,6 +857,23 @@ export default function OwnerPage() {
           </div>
         </TextCard>
 
+        {/* Forms Management Section */}
+        <TextCard title="FORMS MANAGEMENT">
+          <div className="space-y-4 mb-4">
+            <div className="flex justify-end">
+              <TextButton
+                variant="success"
+                onClick={() => router.push('/forms')}
+              >
+                MANAGE FORMS →
+              </TextButton>
+            </div>
+            <TextHierarchy level={2} muted>
+              Create, publish, and manage forms. View submissions and export responses.
+            </TextHierarchy>
+          </div>
+        </TextCard>
+
         <TextCard title="USER MANAGEMENT">
           <CollapsibleSection
             title="USER MANAGEMENT"

@@ -5,6 +5,7 @@ import "../../sentry/client";
 import ConsoleBridgeClient from "./ConsoleBridgeClient";
 import NetworkHealthDialog from "@/components/NetworkHealthDialog";
 import { AuthProvider } from "@/context/AuthContext";
+import { NotificationProvider } from "@/context/NotificationContext";
 import UpdateSnackbar from "@/components/UpdateSnackbar";
 
 const jetbrainsMono = JetBrains_Mono({
@@ -12,7 +13,10 @@ const jetbrainsMono = JetBrains_Mono({
   subsets: ["latin"],
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXTAUTH_URL || 'https://example.com'
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  process.env.NEXTAUTH_URL ||
+  "https://example.com";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
@@ -20,7 +24,8 @@ export const metadata: Metadata = {
     default: "MasterFabric Onboarding",
     template: "%s • MasterFabric",
   },
-  description: "Developer onboarding system for MasterFabric Information Technologies Inc.",
+  description:
+    "Developer onboarding system for MasterFabric Information Technologies Inc.",
   applicationName: "MasterFabric Welcome",
   keywords: [
     "MasterFabric",
@@ -36,13 +41,15 @@ export const metadata: Metadata = {
     type: "website",
     url: "/",
     title: "MasterFabric Onboarding",
-    description: "Developer onboarding system for MasterFabric Information Technologies Inc.",
+    description:
+      "Developer onboarding system for MasterFabric Information Technologies Inc.",
     siteName: "MasterFabric Welcome",
   },
   twitter: {
     card: "summary_large_image",
     title: "MasterFabric Onboarding",
-    description: "Developer onboarding system for MasterFabric Information Technologies Inc.",
+    description:
+      "Developer onboarding system for MasterFabric Information Technologies Inc.",
   },
   robots: {
     index: true,
@@ -64,10 +71,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport = {
-  width: 'device-width',
+  width: "device-width",
   initialScale: 1,
   maximumScale: 1,
-  viewportFit: 'cover',
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -77,14 +84,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${jetbrainsMono.variable} antialiased font-mono`}
-      >
+      <body className={`${jetbrainsMono.variable} antialiased font-mono`}>
         <AuthProvider>
-          <ConsoleBridgeClient />
-          {children}
-          <UpdateSnackbar />
-          <NetworkHealthDialog />
+          <NotificationProvider>
+            <ConsoleBridgeClient />
+            {children}
+            <UpdateSnackbar />
+            <NetworkHealthDialog />
+          </NotificationProvider>
         </AuthProvider>
       </body>
     </html>
