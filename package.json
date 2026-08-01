@@ -18,7 +18,7 @@
     "@supabase/supabase-js": "^2.39.7",
     "@types/qrcode": "^1.5.5",
     "@types/react-google-recaptcha": "^2.1.9",
-    "next": "15.5.3",
+    "next": "15.5.9",
     "qrcode": "^1.5.4",
     "react": "19.1.0",
     "react-dom": "19.1.0",

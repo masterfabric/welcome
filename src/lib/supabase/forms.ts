@@ -161,10 +161,10 @@ export async function getFormQuestions(formId: string) {
   if (optErr) return { data: null, error: optErr }
 
   const optionsByQ = new Map<string, FormQuestionOption[]>()
-  ;(options || []).forEach((o: any) => {
-    const prev = optionsByQ.get(o.question_id) || []
-    optionsByQ.set(o.question_id, [...prev, o])
-  })
+    ; (options || []).forEach((o: any) => {
+      const prev = optionsByQ.get(o.question_id) || []
+      optionsByQ.set(o.question_id, [...prev, o])
+    })
 
   const merged = (questions || []).map((q: any) => ({
     ...q,
@@ -273,6 +273,31 @@ export async function updateQuestion(questionId: string, updates: Partial<FormQu
     .single()
   if (error) return { data: null, error }
   return { data, error: null }
+}
+
+export async function updateQuestionOption(optionId: string, updates: Partial<FormQuestionOption>) {
+  const payload: any = {}
+  if (typeof updates.label !== 'undefined') payload.label = updates.label
+  if (typeof updates.value !== 'undefined') payload.value = updates.value
+  if (typeof updates.order_index !== 'undefined') payload.order_index = updates.order_index
+  if (typeof updates.is_other !== 'undefined') payload.is_other = updates.is_other
+
+  const { data, error } = await supabase
+    .from('form_question_options')
+    .update(payload)
+    .eq('id', optionId)
+    .select('*')
+    .single()
+  if (error) return { data: null, error }
+  return { data: data as FormQuestionOption, error: null }
+}
+
+export async function deleteQuestionOption(optionId: string) {
+  const { error } = await supabase
+    .from('form_question_options')
+    .delete()
+    .eq('id', optionId)
+  return { error: error || null }
 }
 
 

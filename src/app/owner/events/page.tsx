@@ -1,253 +1,251 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import { useAuth } from '@/context/AuthContext'
-import { useRouter } from 'next/navigation'
-import Navbar from '@/components/layout/Navbar'
-import PageLayout from '@/components/layout/PageLayout'
-import TextCard from '@/components/ui/TextCard'
-import TextButton from '@/components/ui/TextButton'
-import TextHierarchy from '@/components/ui/TextHierarchy'
-import TextBadge from '@/components/ui/TextBadge'
-import EventTicket from '@/components/events/EventTicket'
-import { getOwnerEvents, getEventParticipants, updateEvent, deleteEvent, createEvent } from '@/lib/repositories/events'
-import { captureException } from '@/lib/sentry'
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import PageLayout from "@/components/layout/PageLayout";
+import TextCard from "@/components/ui/TextCard";
+import TextButton from "@/components/ui/TextButton";
+import TextHierarchy from "@/components/ui/TextHierarchy";
+import TextBadge from "@/components/ui/TextBadge";
+import EventTicket from "@/components/events/EventTicket";
+import {
+  getOwnerEvents,
+  getEventParticipants,
+  updateEvent,
+  deleteEvent,
+  createEvent,
+} from "@/lib/repositories/events";
+import { captureException } from "@/lib/sentry";
 
 interface Event {
-  id: string
-  title: string
-  description?: string
-  event_date: string
-  location?: string
-  max_participants?: number
-  participant_count: number
-  is_upcoming?: boolean
-  is_published: boolean
-  is_active: boolean
-  created_at: string
+  id: string;
+  title: string;
+  description?: string;
+  event_date: string;
+  location?: string;
+  max_participants?: number;
+  participant_count: number;
+  is_upcoming?: boolean;
+  is_published: boolean;
+  is_active: boolean;
+  created_at: string;
 }
 
 interface Participant {
-  id: string
-  reference_number: string
-  full_name: string
-  email: string
-  title?: string
-  company?: string
-  registration_date: string
+  id: string;
+  reference_number: string;
+  full_name: string;
+  email: string;
+  title?: string;
+  company?: string;
+  registration_date: string;
 }
 
 export default function OwnerEventsPage() {
-  const { user, userProfile, loading } = useAuth()
-  const router = useRouter()
-  const [events, setEvents] = useState<Event[]>([])
-  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null)
-  const [participants, setParticipants] = useState<Participant[]>([])
-  const [loadingEvents, setLoadingEvents] = useState(true)
-  const [loadingParticipants, setLoadingParticipants] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [createOpen, setCreateOpen] = useState(false)
-  const [selectedTicket, setSelectedTicket] = useState<Participant | null>(null)
-  const [editingEvent, setEditingEvent] = useState<Event | null>(null)
+  const router = useRouter();
+  const [events, setEvents] = useState<Event[]>([]);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+  const [participants, setParticipants] = useState<Participant[]>([]);
+  const [loadingEvents, setLoadingEvents] = useState(true);
+  const [loadingParticipants, setLoadingParticipants] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [selectedTicket, setSelectedTicket] = useState<Participant | null>(
+    null
+  );
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
 
   useEffect(() => {
-    if (!loading && userProfile) {
-      if (!userProfile.is_owner) {
-        router.replace('/events')
-        return
-      }
-      fetchEvents()
-    }
-  }, [userProfile, loading, router])
+    fetchEvents();
+  }, []);
 
   const fetchEvents = async () => {
     try {
-      setLoadingEvents(true)
-      const { data, error } = await getOwnerEvents()
-      
+      setLoadingEvents(true);
+      const { data, error } = await getOwnerEvents();
+
       if (error) {
-        throw error
+        throw error;
       }
-      
+
       // Get participant counts for each event
       const eventsWithCounts = await Promise.all(
         (data || []).map(async (event) => {
-          const { data: participants } = await getEventParticipants(event.id)
+          const { data: participants } = await getEventParticipants(event.id);
           return {
             ...event,
-            participant_count: participants?.length || 0
-          }
+            participant_count: participants?.length || 0,
+          };
         })
-      )
-      
-      setEvents(eventsWithCounts)
+      );
+
+      setEvents(eventsWithCounts);
     } catch (err) {
-      console.error('Error fetching events:', err)
+      console.error("Error fetching events:", err);
       captureException(err, {
-        tags: { page: 'events-owner', operation: 'fetch_events' }
-      })
-      setError(err instanceof Error ? err.message : 'Failed to fetch events')
+        tags: { page: "events-owner", operation: "fetch_events" },
+      });
+      setError(err instanceof Error ? err.message : "Failed to fetch events");
     } finally {
-      setLoadingEvents(false)
+      setLoadingEvents(false);
     }
-  }
+  };
 
   const fetchParticipants = async (eventId: string) => {
     try {
-      setLoadingParticipants(true)
-      const { data, error } = await getEventParticipants(eventId)
-      
+      setLoadingParticipants(true);
+      const { data, error } = await getEventParticipants(eventId);
+
       if (error) {
-        throw error
+        throw error;
       }
-      
-      setParticipants(data || [])
+
+      setParticipants(data || []);
     } catch (err) {
-      console.error('Error fetching participants:', err)
+      console.error("Error fetching participants:", err);
       captureException(err, {
-        tags: { page: 'events-owner', operation: 'fetch_participants' },
-        extra: { eventId }
-      })
-      setError(err instanceof Error ? err.message : 'Failed to fetch participants')
+        tags: { page: "events-owner", operation: "fetch_participants" },
+        extra: { eventId },
+      });
+      setError(
+        err instanceof Error ? err.message : "Failed to fetch participants"
+      );
     } finally {
-      setLoadingParticipants(false)
+      setLoadingParticipants(false);
     }
-  }
+  };
 
   const handleEventSelect = (event: Event) => {
     if (selectedEvent && selectedEvent.id === event.id) {
       // collapse if clicking the same card
-      setSelectedEvent(null)
-      setParticipants([])
-      return
+      setSelectedEvent(null);
+      setParticipants([]);
+      return;
     }
-    setSelectedEvent(event)
-    fetchParticipants(event.id)
-  }
+    setSelectedEvent(event);
+    fetchParticipants(event.id);
+  };
 
-  const handlePublishToggle = async (eventId: string, currentStatus: boolean) => {
+  const handlePublishToggle = async (
+    eventId: string,
+    currentStatus: boolean
+  ) => {
     try {
       const { error } = await updateEvent(eventId, {
-        is_published: !currentStatus
-      })
+        is_published: !currentStatus,
+      });
 
       if (error) {
-        throw error
+        throw error;
       }
 
       // Refresh events list
-      fetchEvents()
+      fetchEvents();
     } catch (err) {
-      console.error('Error updating event:', err)
+      console.error("Error updating event:", err);
       captureException(err, {
-        tags: { page: 'events-owner', operation: 'update_event' },
-        extra: { eventId }
-      })
-      setError(err instanceof Error ? err.message : 'Failed to update event')
+        tags: { page: "events-owner", operation: "update_event" },
+        extra: { eventId },
+      });
+      setError(err instanceof Error ? err.message : "Failed to update event");
     }
-  }
+  };
 
   const handleDeleteEvent = async (eventId: string) => {
-    if (!confirm('Are you sure you want to delete this event? This action cannot be undone.')) {
-      return
+    if (
+      !confirm(
+        "Are you sure you want to delete this event? This action cannot be undone."
+      )
+    ) {
+      return;
     }
 
     try {
-      const { error } = await deleteEvent(eventId)
+      const { error } = await deleteEvent(eventId);
 
       if (error) {
-        throw error
+        throw error;
       }
 
       // Refresh events list
-      fetchEvents()
-      setSelectedEvent(null)
-      setParticipants([])
+      fetchEvents();
+      setSelectedEvent(null);
+      setParticipants([]);
     } catch (err) {
-      console.error('Error deleting event:', err)
+      console.error("Error deleting event:", err);
       captureException(err, {
-        tags: { page: 'events-owner', operation: 'delete_event' },
-        extra: { eventId }
-      })
-      setError(err instanceof Error ? err.message : 'Failed to delete event')
+        tags: { page: "events-owner", operation: "delete_event" },
+        extra: { eventId },
+      });
+      setError(err instanceof Error ? err.message : "Failed to delete event");
     }
-  }
+  };
 
   const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    return date.toLocaleDateString('tr-TR', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
-  }
+    const date = new Date(dateString);
+    return date.toLocaleDateString("tr-TR", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
 
   const getInitials = (name: string) => {
     return name
-      .split(' ')
-      .map(word => word.charAt(0))
-      .join('')
+      .split(" ")
+      .map((word) => word.charAt(0))
+      .join("")
       .toUpperCase()
-      .substring(0, 2)
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <TextBadge variant="default">LOADING...</TextBadge>
-      </div>
-    )
-  }
-
-  if (!user || !userProfile?.is_owner) {
-    router.replace('/')
-    return null
-  }
+      .substring(0, 2);
+  };
 
   return (
-    <div className="min-h-screen">
-      <Navbar user={userProfile} onSignOut={() => {}} />
-      
+    <>
       <PageLayout
         title="EVENT MANAGEMENT"
-        subtitle="Owner Dashboard"
+        subtitle="Create and Manage Your Events"
       >
         {/* Navigation */}
         <TextCard title="NAVIGATION">
           <div className="flex gap-3">
             <TextButton
               variant="default"
-              onClick={() => router.push('/events')}
+              onClick={() => router.push("/events")}
             >
               ← BACK TO EVENTS
             </TextButton>
             <TextButton
-              variant={createOpen ? 'warning' : 'success'}
-              onClick={() => setCreateOpen(v => !v)}
+              variant={createOpen ? "warning" : "success"}
+              onClick={() => setCreateOpen((v) => !v)}
             >
-              {createOpen ? 'HIDE CREATE FORM' : 'CREATE NEW EVENT'}
+              {createOpen ? "HIDE CREATE FORM" : "CREATE NEW EVENT"}
             </TextButton>
           </div>
         </TextCard>
 
         {createOpen && (
           <TextCard title="CREATE EVENT">
-            <CreateEventForm onCreated={() => { setCreateOpen(false); fetchEvents() }} />
+            <CreateEventForm
+              onCreated={() => {
+                setCreateOpen(false);
+                fetchEvents();
+              }}
+            />
           </TextCard>
         )}
 
         {editingEvent && (
           <TextCard title="EDIT EVENT">
-            <EditEventForm 
+            <EditEventForm
               event={editingEvent}
-              onUpdated={() => { 
-                setEditingEvent(null)
-                fetchEvents()
+              onUpdated={() => {
+                setEditingEvent(null);
+                fetchEvents();
                 // If the edited event is currently selected, refresh its data
                 if (selectedEvent?.id === editingEvent.id) {
-                  setSelectedEvent(null)
+                  setSelectedEvent(null);
                 }
               }}
               onCancel={() => setEditingEvent(null)}
@@ -277,67 +275,72 @@ export default function OwnerEventsPage() {
           ) : (
             <div className="space-y-4">
               {events.map((event) => (
-                <div key={event.id} className="border border-black p-4 bg-white">
-                  <div className="flex items-start justify-between mb-3">
+                <div
+                  key={event.id}
+                  className="border border-black p-4 bg-white"
+                >
+                  <div className="flex flex-col md:flex-row items-start justify-between mb-3 gap-4">
                     <div className="flex-1">
                       <TextHierarchy level={1} emphasis className="text-lg">
                         {event.title}
                       </TextHierarchy>
-                      <TextHierarchy level={2} muted className="mt-1">
+                      <p className="muted mt-1">
                         📅 {formatDate(event.event_date)}
-                      </TextHierarchy>
+                      </p>
                       {event.location && (
-                        <TextHierarchy level={2} muted>
-                          📍 {event.location}
-                        </TextHierarchy>
+                        <p className="muted">📍 {event.location}</p>
                       )}
                     </div>
                     <div className="flex gap-2 items-center">
-                      <TextBadge variant={event.is_published ? 'success' : 'warning'}>
-                        {event.is_published ? 'PUBLISHED' : 'DRAFT'}
+                      <TextBadge
+                        variant={event.is_published ? "success" : "warning"}
+                      >
+                        {event.is_published ? "PUBLISHED" : "DRAFT"}
                       </TextBadge>
-                      <TextBadge variant={event.is_active ? 'success' : 'error'}>
-                        {event.is_active ? 'ACTIVE' : 'INACTIVE'}
+                      <TextBadge
+                        variant={event.is_active ? "success" : "error"}
+                      >
+                        {event.is_active ? "ACTIVE" : "INACTIVE"}
                       </TextBadge>
                       <TextButton
                         variant="default"
                         onClick={() => setEditingEvent(event)}
                         className="text-xs"
                       >
-                        ✏️ EDIT
+                        EDIT
                       </TextButton>
                     </div>
                   </div>
 
                   {event.description && (
-                    <TextHierarchy level={2} muted className="mb-3">
-                      {event.description}
-                    </TextHierarchy>
+                    <p className="muted mb-3">{event.description}</p>
                   )}
 
-                  <div className="flex items-center justify-between pt-3 border-t border-gray-200">
-                    <div className="flex items-center gap-4">
-                      <TextHierarchy level={2} muted>
+                  <div className="flex flex-col md:flex-row items-center justify-between pt-3 border-t border-gray-200 gap-2">
+                    <div className="w-full md:w-auto flex items-center gap-4">
+                      <p className="muted">
                         👥 {event.participant_count} participants
-                      </TextHierarchy>
+                      </p>
                       {event.max_participants && (
-                        <TextHierarchy level={2} muted>
-                          (max {event.max_participants})
-                        </TextHierarchy>
+                        <p className="muted">(max {event.max_participants})</p>
                       )}
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex flex-col w-full md:w-auto md:flex-row gap-2">
                       <TextButton
                         variant="default"
                         onClick={() => handleEventSelect(event)}
                       >
-                        {selectedEvent?.id === event.id ? 'HIDE DETAILS' : 'VIEW DETAILS'}
+                        {selectedEvent?.id === event.id
+                          ? "HIDE DETAILS"
+                          : "VIEW DETAILS"}
                       </TextButton>
                       <TextButton
-                        variant={event.is_published ? 'warning' : 'success'}
-                        onClick={() => handlePublishToggle(event.id, event.is_published)}
+                        variant={event.is_published ? "warning" : "success"}
+                        onClick={() =>
+                          handlePublishToggle(event.id, event.is_published)
+                        }
                       >
-                        {event.is_published ? 'UNPUBLISH' : 'PUBLISH'}
+                        {event.is_published ? "UNPUBLISH" : "PUBLISH"}
                       </TextButton>
                       <TextButton
                         variant="error"
@@ -365,32 +368,49 @@ export default function OwnerEventsPage() {
                       ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                           {participants.map((participant) => (
-                            <div key={participant.id} className="border border-gray-300 p-3 rounded bg-gray-50 relative">
+                            <div
+                              key={participant.id}
+                              className="border border-gray-300 p-3 rounded bg-gray-50 relative"
+                            >
                               {/* Delete Icon Button - Top Right */}
                               <button
                                 onClick={async () => {
-                                  if (confirm(`Remove ${participant.full_name} from this event?`)) {
+                                  if (
+                                    confirm(
+                                      `Remove ${participant.full_name} from this event?`
+                                    )
+                                  ) {
                                     try {
-                                      const supabase = await import('@/lib/supabase').then(m => m.supabase)
+                                      const supabase = await import(
+                                        "@/lib/supabase"
+                                      ).then((m) => m.supabase);
                                       const { error } = await supabase
-                                        .from('event_participants')
+                                        .from("event_participants")
                                         .delete()
-                                        .eq('id', participant.id)
-                                      
-                                      if (error) throw error
-                                      
+                                        .eq("id", participant.id);
+
+                                      if (error) throw error;
+
                                       // Refresh participants list
                                       if (selectedEvent) {
-                                        fetchParticipants(selectedEvent.id)
-                                        fetchEvents()
+                                        fetchParticipants(selectedEvent.id);
+                                        fetchEvents();
                                       }
                                     } catch (err) {
-                                      console.error('Delete participant error:', err)
+                                      console.error(
+                                        "Delete participant error:",
+                                        err
+                                      );
                                       captureException(err, {
-                                        tags: { page: 'events-owner', operation: 'delete_participant' },
-                                        extra: { participantId: participant.id }
-                                      })
-                                      alert('Failed to remove participant')
+                                        tags: {
+                                          page: "events-owner",
+                                          operation: "delete_participant",
+                                        },
+                                        extra: {
+                                          participantId: participant.id,
+                                        },
+                                      });
+                                      alert("Failed to remove participant");
                                     }
                                   }
                                 }}
@@ -405,24 +425,45 @@ export default function OwnerEventsPage() {
                                   {getInitials(participant.full_name)}
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <TextHierarchy level={1} emphasis className="truncate">
+                                  <TextHierarchy
+                                    level={1}
+                                    emphasis
+                                    className="truncate"
+                                  >
                                     {participant.full_name}
                                   </TextHierarchy>
-                                  <TextHierarchy level={2} muted className="truncate text-xs">
+                                  <TextHierarchy
+                                    level={2}
+                                    muted
+                                    className="truncate text-xs"
+                                  >
                                     {participant.email}
                                   </TextHierarchy>
                                   {participant.title && (
-                                    <TextHierarchy level={2} muted className="text-xs">
+                                    <TextHierarchy
+                                      level={2}
+                                      muted
+                                      className="text-xs"
+                                    >
                                       💼 {participant.title}
                                     </TextHierarchy>
                                   )}
                                   {participant.company && (
-                                    <TextHierarchy level={2} muted className="text-xs">
+                                    <TextHierarchy
+                                      level={2}
+                                      muted
+                                      className="text-xs"
+                                    >
                                       🏢 {participant.company}
                                     </TextHierarchy>
                                   )}
-                                  <TextHierarchy level={2} muted className="text-xs mt-1">
-                                    📅 {formatDate(participant.registration_date)}
+                                  <TextHierarchy
+                                    level={2}
+                                    muted
+                                    className="text-xs mt-1"
+                                  >
+                                    📅{" "}
+                                    {formatDate(participant.registration_date)}
                                   </TextHierarchy>
                                 </div>
                               </div>
@@ -432,16 +473,24 @@ export default function OwnerEventsPage() {
                                 className="absolute bottom-2 right-2 w-8 h-8 bg-white border-2 border-black hover:bg-black hover:text-white transition-colors flex items-center justify-center group"
                                 title="View Ticket"
                               >
-                                <svg 
-                                  xmlns="http://www.w3.org/2000/svg" 
-                                  fill="none" 
-                                  viewBox="0 0 24 24" 
-                                  strokeWidth={2} 
-                                  stroke="currentColor" 
+                                <svg
+                                  xmlns="http://www.w3.org/2000/svg"
+                                  fill="none"
+                                  viewBox="0 0 24 24"
+                                  strokeWidth={2}
+                                  stroke="currentColor"
                                   className="w-5 h-5"
                                 >
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 6.75h.75v.75h-.75v-.75zM6.75 16.5h.75v.75h-.75v-.75zM16.5 6.75h.75v.75h-.75v-.75zM13.5 13.5h.75v.75h-.75v-.75zM13.5 19.5h.75v.75h-.75v-.75zM19.5 13.5h.75v.75h-.75v-.75zM19.5 19.5h.75v.75h-.75v-.75zM16.5 16.5h.75v.75h-.75v-.75z" />
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 013.75 9.375v-4.5zM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 01-1.125-1.125v-4.5zM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0113.5 9.375v-4.5z"
+                                  />
+                                  <path
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                    d="M6.75 6.75h.75v.75h-.75v-.75zM6.75 16.5h.75v.75h-.75v-.75zM16.5 6.75h.75v.75h-.75v-.75zM13.5 13.5h.75v.75h-.75v-.75zM13.5 19.5h.75v.75h-.75v-.75zM19.5 13.5h.75v.75h-.75v-.75zM19.5 19.5h.75v.75h-.75v-.75zM16.5 16.5h.75v.75h-.75v-.75z"
+                                  />
                                 </svg>
                               </button>
                             </div>
@@ -459,11 +508,11 @@ export default function OwnerEventsPage() {
 
       {/* Ticket Popup Modal */}
       {selectedTicket && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4"
           onClick={() => setSelectedTicket(null)}
         >
-          <div 
+          <div
             className="bg-white max-w-2xl w-full max-h-[90vh] overflow-y-auto relative"
             onClick={(e) => e.stopPropagation()}
           >
@@ -483,74 +532,85 @@ export default function OwnerEventsPage() {
                   reference_number: selectedTicket.reference_number,
                   full_name: selectedTicket.full_name,
                   email: selectedTicket.email,
-                  event_id: selectedEvent?.id || '',
-                  event_title: selectedEvent?.title || '',
-                  event_date: selectedEvent?.event_date || '',
+                  event_id: selectedEvent?.id || "",
+                  event_title: selectedEvent?.title || "",
+                  event_date: selectedEvent?.event_date || "",
                   event_location: selectedEvent?.location,
-                  registration_date: selectedTicket.registration_date
+                  registration_date: selectedTicket.registration_date,
                 }}
               />
             </div>
           </div>
         </div>
       )}
-    </div>
-  )
+    </>
+  );
 }
 
-function EditEventForm({ event, onUpdated, onCancel }: { 
-  event: Event
-  onUpdated: () => void
-  onCancel: () => void
+function EditEventForm({
+  event,
+  onUpdated,
+  onCancel,
+}: {
+  event: Event;
+  onUpdated: () => void;
+  onCancel: () => void;
 }) {
   const [form, setForm] = useState({
     title: event.title,
-    description: event.description || '',
+    description: event.description || "",
     event_date: event.event_date.slice(0, 16), // Format for datetime-local
-    location: event.location || '',
-    max_participants: event.max_participants?.toString() || '' as number | string,
+    location: event.location || "",
+    max_participants:
+      event.max_participants?.toString() || ("" as number | string),
     is_upcoming: event.is_upcoming ?? true,
-  })
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setForm(prev => ({ ...prev, [name]: value }))
-  }
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+  };
   const handleCheckbox = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, checked } = e.target
-    setForm(prev => ({ ...prev, [name]: checked }))
-  }
+    const { name, checked } = e.target;
+    setForm((prev) => ({ ...prev, [name]: checked }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSubmitting(true)
-    setError(null)
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
     try {
       const { error } = await updateEvent(event.id, {
         title: form.title,
         description: form.description || undefined,
         event_date: form.event_date,
         location: form.location || undefined,
-        max_participants: form.max_participants ? Number(form.max_participants) : undefined,
+        max_participants: form.max_participants
+          ? Number(form.max_participants)
+          : undefined,
         is_upcoming: form.is_upcoming,
-      })
-      
-      if (error) throw error
-      
-      onUpdated()
+      });
+
+      if (error) throw error;
+
+      onUpdated();
     } catch (e) {
-      setError((e as Error).message)
+      setError((e as Error).message);
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <TextHierarchy level={2} className="mb-2">TITLE</TextHierarchy>
+        <TextHierarchy level={2} className="mb-2">
+          TITLE
+        </TextHierarchy>
         <input
           name="title"
           value={form.title}
@@ -561,7 +621,9 @@ function EditEventForm({ event, onUpdated, onCancel }: {
         />
       </div>
       <div>
-        <TextHierarchy level={2} className="mb-2">DESCRIPTION</TextHierarchy>
+        <TextHierarchy level={2} className="mb-2">
+          DESCRIPTION
+        </TextHierarchy>
         <textarea
           name="description"
           value={form.description}
@@ -572,7 +634,9 @@ function EditEventForm({ event, onUpdated, onCancel }: {
         />
       </div>
       <div>
-        <TextHierarchy level={2} className="mb-2">DATE/TIME</TextHierarchy>
+        <TextHierarchy level={2} className="mb-2">
+          DATE/TIME
+        </TextHierarchy>
         <input
           type="datetime-local"
           name="event_date"
@@ -583,7 +647,9 @@ function EditEventForm({ event, onUpdated, onCancel }: {
         />
       </div>
       <div>
-        <TextHierarchy level={2} className="mb-2">LOCATION</TextHierarchy>
+        <TextHierarchy level={2} className="mb-2">
+          LOCATION
+        </TextHierarchy>
         <input
           name="location"
           value={form.location}
@@ -593,7 +659,9 @@ function EditEventForm({ event, onUpdated, onCancel }: {
         />
       </div>
       <div>
-        <TextHierarchy level={2} className="mb-2">MAX PARTICIPANTS (optional)</TextHierarchy>
+        <TextHierarchy level={2} className="mb-2">
+          MAX PARTICIPANTS (optional)
+        </TextHierarchy>
         <input
           type="number"
           name="max_participants"
@@ -621,67 +689,90 @@ function EditEventForm({ event, onUpdated, onCancel }: {
         </div>
       )}
       <div className="flex gap-3">
-        <TextButton type="submit" variant="success" disabled={submitting} className="flex-1">
-          {submitting ? 'UPDATING...' : 'UPDATE EVENT'}
+        <TextButton
+          type="submit"
+          variant="success"
+          disabled={submitting}
+          className="flex-1"
+        >
+          {submitting ? "UPDATING..." : "UPDATE EVENT"}
         </TextButton>
-        <TextButton type="button" variant="default" onClick={onCancel} disabled={submitting}>
+        <TextButton
+          type="button"
+          variant="default"
+          onClick={onCancel}
+          disabled={submitting}
+        >
           CANCEL
         </TextButton>
       </div>
     </form>
-  )
+  );
 }
 
 function CreateEventForm({ onCreated }: { onCreated: () => void }) {
   const [form, setForm] = useState({
-    title: '',
-    description: '',
-    event_date: '',
-    location: '',
-    max_participants: '' as number | string,
+    title: "",
+    description: "",
+    event_date: "",
+    location: "",
+    max_participants: "" as number | string,
     is_upcoming: true,
-  })
-  const [submitting, setSubmitting] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setForm(prev => ({ ...prev, [name]: value }))
-  }
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setForm((prev) => ({ ...prev, [name]: value }));
+  };
   const handleCheckbox = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, checked } = e.target
-    setForm(prev => ({ ...prev, [name]: checked }))
-  }
+    const { name, checked } = e.target;
+    setForm((prev) => ({ ...prev, [name]: checked }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setSubmitting(true)
-    setError(null)
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
     try {
       const { error } = await createEvent({
         title: form.title,
         description: form.description || undefined,
         event_date: form.event_date,
         location: form.location || undefined,
-        max_participants: form.max_participants ? Number(form.max_participants) : undefined,
+        max_participants: form.max_participants
+          ? Number(form.max_participants)
+          : undefined,
         is_upcoming: form.is_upcoming,
-      })
-      
-      if (error) throw error
-      
-      onCreated()
-      setForm({ title: '', description: '', event_date: '', location: '', max_participants: '', is_upcoming: true })
+      });
+
+      if (error) throw error;
+
+      onCreated();
+      setForm({
+        title: "",
+        description: "",
+        event_date: "",
+        location: "",
+        max_participants: "",
+        is_upcoming: true,
+      });
     } catch (e) {
-      setError((e as Error).message)
+      setError((e as Error).message);
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <TextHierarchy level={2} className="mb-2">TITLE</TextHierarchy>
+        <TextHierarchy level={2} className="mb-2">
+          TITLE
+        </TextHierarchy>
         <input
           name="title"
           value={form.title}
@@ -692,7 +783,9 @@ function CreateEventForm({ onCreated }: { onCreated: () => void }) {
         />
       </div>
       <div>
-        <TextHierarchy level={2} className="mb-2">DESCRIPTION</TextHierarchy>
+        <TextHierarchy level={2} className="mb-2">
+          DESCRIPTION
+        </TextHierarchy>
         <textarea
           name="description"
           value={form.description}
@@ -703,7 +796,9 @@ function CreateEventForm({ onCreated }: { onCreated: () => void }) {
         />
       </div>
       <div>
-        <TextHierarchy level={2} className="mb-2">DATE/TIME</TextHierarchy>
+        <TextHierarchy level={2} className="mb-2">
+          DATE/TIME
+        </TextHierarchy>
         <input
           type="datetime-local"
           name="event_date"
@@ -714,7 +809,9 @@ function CreateEventForm({ onCreated }: { onCreated: () => void }) {
         />
       </div>
       <div>
-        <TextHierarchy level={2} className="mb-2">LOCATION</TextHierarchy>
+        <TextHierarchy level={2} className="mb-2">
+          LOCATION
+        </TextHierarchy>
         <input
           name="location"
           value={form.location}
@@ -724,7 +821,9 @@ function CreateEventForm({ onCreated }: { onCreated: () => void }) {
         />
       </div>
       <div>
-        <TextHierarchy level={2} className="mb-2">MAX PARTICIPANTS</TextHierarchy>
+        <TextHierarchy level={2} className="mb-2">
+          MAX PARTICIPANTS
+        </TextHierarchy>
         <input
           type="number"
           name="max_participants"
@@ -745,13 +844,15 @@ function CreateEventForm({ onCreated }: { onCreated: () => void }) {
         <TextHierarchy level={2}>Show in upcoming</TextHierarchy>
       </div>
       {error && (
-        <TextHierarchy level={2} className="text-red-400">{error}</TextHierarchy>
+        <TextHierarchy level={2} className="text-red-400">
+          {error}
+        </TextHierarchy>
       )}
       <div className="flex gap-3">
         <TextButton type="submit" variant="success" disabled={submitting}>
-          {submitting ? 'CREATING...' : 'CREATE EVENT'}
+          {submitting ? "CREATING..." : "CREATE EVENT"}
         </TextButton>
       </div>
     </form>
-  )
+  );
 }

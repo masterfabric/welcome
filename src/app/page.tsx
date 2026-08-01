@@ -19,6 +19,8 @@ export default function Home() {
   const [welcomeText, setWelcomeText] = useState<string>('')
   const [events, setEvents] = useState<any[]>([])
   const [isLoadingContent, setIsLoadingContent] = useState(true)
+  const [landingPage, setLandingPage] = useState<any>(null)
+  const [useDynamicLanding, setUseDynamicLanding] = useState(false)
   const [initialLoading, setInitialLoading] = useState(true)
   const [showBadge, setShowBadge] = useState('masterfabric')
   const [authSuccess, setAuthSuccess] = useState(false)
@@ -276,6 +278,23 @@ export default function Home() {
   useEffect(() => {
     const loadContent = async () => {
       try {
+        // Try to load dynamic landing page first
+        try {
+          const landingResponse = await fetch('/api/landing')
+          if (landingResponse.ok) {
+            const landingData = await landingResponse.json()
+            if (landingData.landingPage) {
+              setLandingPage(landingData.landingPage)
+              setUseDynamicLanding(true)
+              setIsLoadingContent(false)
+              return // Use dynamic content, skip loading static content
+            }
+          }
+        } catch (error) {
+          console.log('No dynamic landing page found, using static content')
+        }
+
+        // Fallback to static content
         const stepsResponse = await fetch('/api/process-overview')
         if (!stepsResponse.ok) {
           throw new Error(`Failed to load process overview: ${stepsResponse.status}`)
@@ -461,7 +480,145 @@ export default function Home() {
     )
   }
 
-  return (
+  // Render dynamic landing page
+  const renderDynamicLanding = () => {
+    if (!landingPage) return null
+
+    return (
+      <div className="min-h-screen">
+        <Navbar user={userProfile} onSignOut={signOut} />
+
+        <PageLayout
+          title={landingPage.title}
+          subtitle={landingPage.subtitle}
+        >
+          {isLoadingContent ? (
+            <TextCard title="LOADING">
+              <TextHierarchy level={1} muted>
+                Loading content...
+              </TextHierarchy>
+            </TextCard>
+          ) : (
+            <>
+              {landingPage.sections && landingPage.sections.map((section: any) => {
+                // Render different section types
+                switch (section.section_type) {
+                  case 'welcome':
+                    return (
+                      <TextCard key={section.id} title={section.title}>
+                        <TextHierarchy level={1}>
+                          {section.content.text || ''}
+                        </TextHierarchy>
+                      </TextCard>
+                    )
+
+                  case 'process':
+                    return (
+                      <TextCard key={section.id} title={section.title}>
+                        {section.content.steps && section.content.steps.map((step: any, stepIndex: number) => (
+                          <div key={stepIndex}>
+                            <TextHierarchy level={1} emphasis className={stepIndex > 0 ? "mt-4" : ""}>
+                              {step.title}
+                            </TextHierarchy>
+                            {step.items && step.items.map((item: string, itemIndex: number) => (
+                              <TextHierarchy key={itemIndex} level={2} muted>
+                                {item}
+                              </TextHierarchy>
+                            ))}
+                          </div>
+                        ))}
+                      </TextCard>
+                    )
+
+                  case 'info':
+                    return (
+                      <TextCard key={section.id} title={section.title}>
+                        {section.content.items && section.content.items.map((item: any, index: number) => (
+                          <TextHierarchy key={index} level={1} className={index < section.content.items.length - 1 ? "mb-3" : ""}>
+                            <TextBadge variant={item.variant || "default"}>{item.label}</TextBadge> {item.value}
+                          </TextHierarchy>
+                        ))}
+                      </TextCard>
+                    )
+
+                  case 'cta':
+                    return (
+                      <div key={section.id} className="flex justify-center pt-8">
+                        <TextButton
+                          onClick={handleGitHubSignIn}
+                          variant="success"
+                          className="text-base px-8 py-3"
+                        >
+                          {section.content.buttonText || 'BEGIN ONBOARDING → GITHUB LOGIN'}
+                        </TextButton>
+                      </div>
+                    )
+
+                  case 'hero':
+                    return (
+                      <TextCard key={section.id} title={section.title} variant="default">
+                        <TextHierarchy level={1} emphasis className="text-lg mb-4">
+                          {section.content.heading || ''}
+                        </TextHierarchy>
+                        <TextHierarchy level={2} muted>
+                          {section.content.description || ''}
+                        </TextHierarchy>
+                      </TextCard>
+                    )
+
+                  case 'features':
+                    return (
+                      <TextCard key={section.id} title={section.title}>
+                        {section.content.features && section.content.features.map((feature: any, index: number) => (
+                          <div key={index} className={index < section.content.features.length - 1 ? "mb-4" : ""}>
+                            <TextHierarchy level={1} emphasis>
+                              {feature.title}
+                            </TextHierarchy>
+                            <TextHierarchy level={2} muted>
+                              {feature.description}
+                            </TextHierarchy>
+                          </div>
+                        ))}
+                      </TextCard>
+                    )
+
+                  case 'custom':
+                  default:
+                    return (
+                      <TextCard key={section.id} title={section.title}>
+                        <TextHierarchy level={1}>
+                          {typeof section.content === 'string' 
+                            ? section.content 
+                            : JSON.stringify(section.content, null, 2)}
+                        </TextHierarchy>
+                      </TextCard>
+                    )
+                }
+              })}
+
+              {/* Always show events if available */}
+              <EventList
+                onRegister={() => router.push('/events')}
+                showRegisterButton={false}
+                hideWhenEmpty
+                maxItems={3}
+                section
+              />
+
+              <TextCard variant="default" className="mt-8">
+                <TextHierarchy level={1} muted>
+                  Event participation is public. By registering, you consent to processing your data for event management purposes.
+                </TextHierarchy>
+              </TextCard>
+            </>
+          )}
+        </PageLayout>
+      </div>
+    )
+  }
+
+  // Render static landing page (fallback)
+  const renderStaticLanding = () => (
     <div className="min-h-screen">
       <Navbar user={userProfile} onSignOut={signOut} />
 
@@ -549,4 +706,6 @@ export default function Home() {
 
     </div>
   )
+
+  return useDynamicLanding ? renderDynamicLanding() : renderStaticLanding()
 }

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import PageLayout from "@/components/layout/PageLayout";
 import TextButton from "@/components/ui/TextButton";
 import TextCard from "@/components/ui/TextCard";
+import { captureMessage, addBreadcrumb } from "@/lib/sentry";
 
 export default function NotFound() {
   const router = useRouter();
@@ -16,9 +17,58 @@ export default function NotFound() {
 
     // Check if there's browser history to go back to
     setCanGoBack(window.history.length > 1);
+
+    // Report 404 route to Sentry
+    const currentPath = window.location.pathname;
+    const currentUrl = window.location.href;
+    const referrer = document.referrer || "direct";
+
+    // Add breadcrumb for navigation tracking
+    addBreadcrumb(
+      "404 Page Not Found",
+      {
+        path: currentPath,
+        url: currentUrl,
+        referrer: referrer,
+        timestamp: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+      },
+      "navigation"
+    );
+
+    // Report to Sentry with detailed context
+    captureMessage(`404 Page Not Found: ${currentPath}`, {
+      level: "warning",
+      tags: {
+        type: "404",
+        page: "not-found",
+        error_type: "page_not_found",
+      },
+      extra: {
+        requestedPath: currentPath,
+        requestedUrl: currentUrl,
+        referrer: referrer,
+        timestamp: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+        hasHistory: window.history.length > 1,
+        screenResolution: `${window.screen.width}x${window.screen.height}`,
+        viewportSize: `${window.innerWidth}x${window.innerHeight}`,
+      },
+    });
   }, []);
 
   const handleGoBack = () => {
+    // Log user action for analytics
+    addBreadcrumb(
+      "User clicked go back from 404 page",
+      {
+        action: "go_back",
+        canGoBack: canGoBack,
+        currentPath: window.location.pathname,
+      },
+      "user"
+    );
+
     if (canGoBack) {
       router.back();
     } else {
@@ -27,11 +77,21 @@ export default function NotFound() {
   };
 
   const handleGoHome = () => {
+    // Log user action for analytics
+    addBreadcrumb(
+      "User clicked go home from 404 page",
+      {
+        action: "go_home",
+        currentPath: window.location.pathname,
+      },
+      "user"
+    );
+
     router.replace("/");
   };
 
   return (
-    <div className="min-h-screen flex items-end justify-center bg-white">
+    <div className="min-h-screen flex items-center justify-center bg-white">
       <PageLayout>
         <div className="text-center space-y-6 max-w-2xl mx-auto">
           {/* 404 Number */}

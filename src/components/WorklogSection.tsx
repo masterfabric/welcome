@@ -1,185 +1,185 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import { useAuth } from '@/context/AuthContext'
-import TextCard from '@/components/ui/TextCard'
-import TextButton from '@/components/ui/TextButton'
-import TextHierarchy from '@/components/ui/TextHierarchy'
-import TextBadge from '@/components/ui/TextBadge'
-import { Worklog, getUserWorklogs, createWorklog, updateWorklog, deleteWorklog } from '@/lib/supabase'
+import { useState, useEffect, useRef } from "react";
+import { useAuth } from "@/context/AuthContext";
+import TextCard from "@/components/ui/TextCard";
+import TextButton from "@/components/ui/TextButton";
+import TextHierarchy from "@/components/ui/TextHierarchy";
+import TextBadge from "@/components/ui/TextBadge";
+import Tooltip, { TooltipRef } from "@/components/ui/Tooltip";
+import {
+  Worklog,
+  getUserWorklogs,
+  createWorklog,
+  updateWorklog,
+  deleteWorklog,
+} from "@/lib/supabase";
 
 interface WorklogFormData {
-  title: string
-  description: string
-  date: string
-  hours: string
-  project: string
-  category: string
+  title: string;
+  description: string;
+  date: string;
+  hours: string;
+  project: string;
+  category: string;
 }
 
 const CATEGORIES = [
-  'Development',
-  'Design',
-  'Testing',
-  'Documentation',
-  'Meeting',
-  'Research',
-  'Other'
-]
+  "Development",
+  "Design",
+  "Testing",
+  "Documentation",
+  "Meeting",
+  "Research",
+  "Other",
+];
 
 export default function WorklogSection() {
-  const { user, userProfile } = useAuth()
-  const [worklogs, setWorklogs] = useState<Worklog[]>([])
-  const [showForm, setShowForm] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
-  const [editingWorklog, setEditingWorklog] = useState<Worklog | null>(null)
-  const [filteredWorklogs, setFilteredWorklogs] = useState<Worklog[]>([])
+  const { user, userProfile } = useAuth();
+  const [worklogs, setWorklogs] = useState<Worklog[]>([]);
+  const [showForm, setShowForm] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+  const [editingWorklog, setEditingWorklog] = useState<Worklog | null>(null);
+  const [filteredWorklogs, setFilteredWorklogs] = useState<Worklog[]>([]);
   const [dateFilter, setDateFilter] = useState({
-    startDate: '',
-    endDate: '',
-    quickFilter: 'all' // 'all', 'today', 'week', 'month'
-  })
-  const [hoveredId, setHoveredId] = useState<string | null>(null)
-  const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null)
-  const [hoveredUserId, setHoveredUserId] = useState<boolean>(false)
-  const [userIdTimeout, setUserIdTimeout] = useState<NodeJS.Timeout | null>(null)
-  
+    startDate: "",
+    endDate: "",
+    quickFilter: "all", // 'all', 'today', 'week', 'month'
+  });
+  const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [hoverTimeout, setHoverTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [copySuccess, setCopySuccess] = useState("");
+  const tooltipRef = useRef<TooltipRef>(null);
+
   const [formData, setFormData] = useState<WorklogFormData>({
-    title: '',
-    description: '',
-    date: new Date().toISOString().split('T')[0],
-    hours: '',
-    project: '',
-    category: ''
-  })
+    title: "",
+    description: "",
+    date: new Date().toISOString().split("T")[0],
+    hours: "",
+    project: "",
+    category: "",
+  });
 
   // Load worklogs
   useEffect(() => {
     if (user) {
-      loadWorklogs()
+      loadWorklogs();
     }
-  }, [user])
+  }, [user]);
 
   // Filter worklogs when worklogs or dateFilter changes
   useEffect(() => {
-    filterWorklogs()
-  }, [worklogs, dateFilter])
+    filterWorklogs();
+  }, [worklogs, dateFilter]);
 
   const filterWorklogs = () => {
-    let filtered = [...worklogs]
+    let filtered = [...worklogs];
 
-    if (dateFilter.quickFilter === 'today') {
-      const today = new Date().toISOString().split('T')[0]
-      filtered = filtered.filter(worklog => worklog.date === today)
-    } else if (dateFilter.quickFilter === 'week') {
-      const weekAgo = new Date()
-      weekAgo.setDate(weekAgo.getDate() - 7)
-      const weekAgoStr = weekAgo.toISOString().split('T')[0]
-      filtered = filtered.filter(worklog => worklog.date >= weekAgoStr)
-    } else if (dateFilter.quickFilter === 'month') {
-      const monthAgo = new Date()
-      monthAgo.setMonth(monthAgo.getMonth() - 1)
-      const monthAgoStr = monthAgo.toISOString().split('T')[0]
-      filtered = filtered.filter(worklog => worklog.date >= monthAgoStr)
+    if (dateFilter.quickFilter === "today") {
+      const today = new Date().toISOString().split("T")[0];
+      filtered = filtered.filter((worklog) => worklog.date === today);
+    } else if (dateFilter.quickFilter === "week") {
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 7);
+      const weekAgoStr = weekAgo.toISOString().split("T")[0];
+      filtered = filtered.filter((worklog) => worklog.date >= weekAgoStr);
+    } else if (dateFilter.quickFilter === "month") {
+      const monthAgo = new Date();
+      monthAgo.setMonth(monthAgo.getMonth() - 1);
+      const monthAgoStr = monthAgo.toISOString().split("T")[0];
+      filtered = filtered.filter((worklog) => worklog.date >= monthAgoStr);
     }
 
     if (dateFilter.startDate) {
-      filtered = filtered.filter(worklog => worklog.date >= dateFilter.startDate)
+      filtered = filtered.filter(
+        (worklog) => worklog.date >= dateFilter.startDate
+      );
     }
 
     if (dateFilter.endDate) {
-      filtered = filtered.filter(worklog => worklog.date <= dateFilter.endDate)
+      filtered = filtered.filter(
+        (worklog) => worklog.date <= dateFilter.endDate
+      );
     }
 
-    setFilteredWorklogs(filtered)
-  }
+    setFilteredWorklogs(filtered);
+  };
 
   const setQuickFilter = (filter: string) => {
-    setDateFilter(prev => ({
+    setDateFilter((prev) => ({
       ...prev,
       quickFilter: filter,
-      startDate: '',
-      endDate: ''
-    }))
-  }
+      startDate: "",
+      endDate: "",
+    }));
+  };
 
   const copyToClipboard = async (text: string) => {
     try {
-      await navigator.clipboard.writeText(text)
-      setSuccess('ID copied to clipboard!')
-      setTimeout(() => setSuccess(''), 2000)
+      await navigator.clipboard.writeText(text);
+      setCopySuccess("Copied!");
+      setTimeout(() => setCopySuccess(""), 2000);
+      // Close the tooltip after copying
+      if (tooltipRef.current) {
+        tooltipRef.current.hide();
+      }
     } catch (error) {
-      console.error('Failed to copy:', error)
-      setError('Failed to copy ID')
-      setTimeout(() => setError(''), 2000)
+      console.error("Failed to copy:", error);
+      setError("Failed to copy ID");
+      setTimeout(() => setError(""), 2000);
     }
-  }
+  };
 
   const handleMouseEnter = (id: string) => {
     if (hoverTimeout) {
-      clearTimeout(hoverTimeout)
-      setHoverTimeout(null)
+      clearTimeout(hoverTimeout);
+      setHoverTimeout(null);
     }
-    setHoveredId(id)
-  }
+    setHoveredId(id);
+  };
 
   const handleMouseLeave = () => {
     const timeout = setTimeout(() => {
-      setHoveredId(null)
-    }, 100) // 100ms delay
-    setHoverTimeout(timeout)
-  }
-
-  const handleUserIdMouseEnter = () => {
-    if (userIdTimeout) {
-      clearTimeout(userIdTimeout)
-      setUserIdTimeout(null)
-    }
-    setHoveredUserId(true)
-  }
-
-  const handleUserIdMouseLeave = () => {
-    const timeout = setTimeout(() => {
-      setHoveredUserId(false)
-    }, 100) // 100ms delay
-    setUserIdTimeout(timeout)
-  }
+      setHoveredId(null);
+    }, 100); // 100ms delay
+    setHoverTimeout(timeout);
+  };
 
   const loadWorklogs = async () => {
     try {
-      setIsLoading(true)
+      setIsLoading(true);
       if (!user) {
-        setError('User not authenticated')
-        return
+        setError("User not authenticated");
+        return;
       }
-      
-      const { data, error } = await getUserWorklogs(user.id)
-      
+
+      const { data, error } = await getUserWorklogs(user.id);
+
       if (error) {
-        setError(error.message || 'Failed to load worklogs')
+        setError(error.message || "Failed to load worklogs");
       } else {
-        setWorklogs(data || [])
+        setWorklogs(data || []);
       }
     } catch (error) {
-      console.error('Error loading worklogs:', error)
-      setError('Failed to load worklogs')
+      console.error("Error loading worklogs:", error);
+      setError("Failed to load worklogs");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError('')
-    setSuccess('')
+    e.preventDefault();
+    setIsLoading(true);
+    setError("");
+    setSuccess("");
 
     try {
       if (!user) {
-        setError('User not authenticated')
-        return
+        setError("User not authenticated");
+        return;
       }
 
       const worklogData = {
@@ -189,83 +189,87 @@ export default function WorklogSection() {
         date: formData.date,
         hours: parseFloat(formData.hours),
         project: formData.project,
-        category: formData.category
-      }
+        category: formData.category,
+      };
 
-      let result
+      let result;
       if (editingWorklog) {
-        result = await updateWorklog(editingWorklog.id, worklogData)
+        result = await updateWorklog(editingWorklog.id, worklogData);
       } else {
-        result = await createWorklog(worklogData)
+        result = await createWorklog(worklogData);
       }
 
       if (result.error) {
-        setError(result.error.message || 'Failed to save worklog')
+        setError(result.error.message || "Failed to save worklog");
       } else {
-        setSuccess(editingWorklog ? 'Worklog updated successfully!' : 'Worklog created successfully!')
+        setSuccess(
+          editingWorklog
+            ? "Worklog updated successfully!"
+            : "Worklog created successfully!"
+        );
         setFormData({
-          title: '',
-          description: '',
-          date: new Date().toISOString().split('T')[0],
-          hours: '',
-          project: '',
-          category: ''
-        })
-        setShowForm(false)
-        setEditingWorklog(null)
-        loadWorklogs()
+          title: "",
+          description: "",
+          date: new Date().toISOString().split("T")[0],
+          hours: "",
+          project: "",
+          category: "",
+        });
+        setShowForm(false);
+        setEditingWorklog(null);
+        loadWorklogs();
       }
     } catch (error) {
-      console.error('Error saving worklog:', error)
-      setError('Failed to save worklog')
+      console.error("Error saving worklog:", error);
+      setError("Failed to save worklog");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleEdit = (worklog: Worklog) => {
-    setEditingWorklog(worklog)
+    setEditingWorklog(worklog);
     setFormData({
       title: worklog.title,
-      description: worklog.description || '',
+      description: worklog.description || "",
       date: worklog.date,
       hours: worklog.hours.toString(),
-      project: worklog.project || '',
-      category: worklog.category || ''
-    })
-    setShowForm(true)
-  }
+      project: worklog.project || "",
+      category: worklog.category || "",
+    });
+    setShowForm(true);
+  };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this worklog?')) {
-      return
+    if (!confirm("Are you sure you want to delete this worklog?")) {
+      return;
     }
 
     try {
-      const { error } = await deleteWorklog(id)
+      const { error } = await deleteWorklog(id);
 
       if (error) {
-        setError(error.message || 'Failed to delete worklog')
+        setError(error.message || "Failed to delete worklog");
       } else {
-        setSuccess('Worklog deleted successfully!')
-        loadWorklogs()
+        setSuccess("Worklog deleted successfully!");
+        loadWorklogs();
       }
     } catch (error) {
-      console.error('Error deleting worklog:', error)
-      setError('Failed to delete worklog')
+      console.error("Error deleting worklog:", error);
+      setError("Failed to delete worklog");
     }
-  }
+  };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    })
-  }
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
 
   if (!user || !userProfile) {
-    return null
+    return null;
   }
 
   return (
@@ -288,8 +292,8 @@ export default function WorklogSection() {
           {/* Email Row */}
           <div className="flex flex-wrap gap-3 items-center">
             {userProfile.master_email ? (
-              <TextBadge 
-                variant={userProfile.is_verified ? "success" : "warning"} 
+              <TextBadge
+                variant={userProfile.is_verified ? "success" : "warning"}
                 className="text-sm px-4 py-2"
               >
                 {userProfile.master_email}
@@ -299,7 +303,7 @@ export default function WorklogSection() {
                 No MasterFabric Email
               </TextBadge>
             )}
-            
+
             {userProfile.personal_email && (
               <TextBadge variant="default" className="text-sm px-4 py-2">
                 {userProfile.personal_email}
@@ -308,35 +312,41 @@ export default function WorklogSection() {
           </div>
 
           {/* User ID Row */}
-          <div className="flex flex-wrap gap-3 items-center relative">
-            <div
-              onMouseEnter={handleUserIdMouseEnter}
-              onMouseLeave={handleUserIdMouseLeave}
+          <div className="flex flex-wrap gap-3 items-center">
+            <Tooltip
+              ref={tooltipRef}
+              content={
+                <div className="space-y-2">
+                  <div className="text-xs text-gray-600 mb-1 uppercase tracking-wide">
+                    FULL USER ID:
+                  </div>
+                  <div className="text-xs font-mono break-all mb-2 max-w-lg bg-gray-50 rounded px-3 py-2 border border-gray-200">
+                    {userProfile.id}
+                  </div>
+                  <div className="flex gap-2">
+                    <TextButton
+                      onClick={() => copyToClipboard(userProfile.id)}
+                      variant="success"
+                      className="text-xs px-2 py-1 flex items-center gap-1"
+                    >
+                      COPY
+                    </TextButton>
+                  </div>
+                </div>
+              }
+              position="bottom"
+              variant="default"
             >
-              <TextBadge 
-                variant="default" 
+              <TextBadge
+                variant="default"
                 className="text-sm px-4 py-2 cursor-pointer hover:bg-gray-100 transition-colors"
               >
                 USER ID: {userProfile.id.substring(0, 8)}...
               </TextBadge>
-            </div>
+            </Tooltip>
 
-            {/* Hover popup for User ID */}
-            {hoveredUserId && (
-              <div 
-                className="absolute z-50 bg-white border border-gray-300 rounded-lg shadow-lg p-3 mt-1 left-0 top-full"
-                onMouseEnter={handleUserIdMouseEnter}
-                onMouseLeave={handleUserIdMouseLeave}
-              >
-                <div className="text-xs text-gray-600 mb-2">Full User ID:</div>
-                <div className="text-sm font-mono mb-2 break-all">{userProfile.id}</div>
-                <button
-                  onClick={() => copyToClipboard(userProfile.id)}
-                  className="text-xs bg-blue-500 text-white px-2 py-1 rounded hover:bg-blue-600 transition-colors"
-                >
-                  COPY ID
-                </button>
-              </div>
+            {copySuccess && (
+              <TextBadge variant="success">{copySuccess}</TextBadge>
             )}
           </div>
         </div>
@@ -363,33 +373,41 @@ export default function WorklogSection() {
             <TextHierarchy level={1} emphasis className="mb-3">
               FILTER BY DATE
             </TextHierarchy>
-            
+
             {/* Quick Filter Badges */}
             <div className="flex flex-wrap gap-2 mb-4 overflow-x-auto pb-1 -mx-1 px-1">
               <TextButton
-                onClick={() => setQuickFilter('all')}
-                variant={dateFilter.quickFilter === 'all' ? 'success' : 'default'}
+                onClick={() => setQuickFilter("all")}
+                variant={
+                  dateFilter.quickFilter === "all" ? "success" : "default"
+                }
                 className="px-3 py-1 text-xs"
               >
                 ALL
               </TextButton>
               <TextButton
-                onClick={() => setQuickFilter('today')}
-                variant={dateFilter.quickFilter === 'today' ? 'success' : 'default'}
+                onClick={() => setQuickFilter("today")}
+                variant={
+                  dateFilter.quickFilter === "today" ? "success" : "default"
+                }
                 className="px-3 py-1 text-xs"
               >
                 TODAY
               </TextButton>
               <TextButton
-                onClick={() => setQuickFilter('week')}
-                variant={dateFilter.quickFilter === 'week' ? 'success' : 'default'}
+                onClick={() => setQuickFilter("week")}
+                variant={
+                  dateFilter.quickFilter === "week" ? "success" : "default"
+                }
                 className="px-3 py-1 text-xs"
               >
                 THIS WEEK
               </TextButton>
               <TextButton
-                onClick={() => setQuickFilter('month')}
-                variant={dateFilter.quickFilter === 'month' ? 'success' : 'default'}
+                onClick={() => setQuickFilter("month")}
+                variant={
+                  dateFilter.quickFilter === "month" ? "success" : "default"
+                }
                 className="px-3 py-1 text-xs"
               >
                 THIS MONTH
@@ -405,15 +423,17 @@ export default function WorklogSection() {
                 <input
                   type="date"
                   value={dateFilter.startDate}
-                  onChange={(e) => setDateFilter(prev => ({ 
-                    ...prev, 
-                    startDate: e.target.value,
-                    quickFilter: 'all'
-                  }))}
+                  onChange={(e) =>
+                    setDateFilter((prev) => ({
+                      ...prev,
+                      startDate: e.target.value,
+                      quickFilter: "all",
+                    }))
+                  }
                   className="w-full p-2 border border-black font-mono text-sm bg-white focus:outline-none focus:ring-2 focus:ring-black"
                 />
               </div>
-              
+
               <div>
                 <TextHierarchy level={2} emphasis className="mb-1">
                   TO DATE
@@ -421,22 +441,26 @@ export default function WorklogSection() {
                 <input
                   type="date"
                   value={dateFilter.endDate}
-                  onChange={(e) => setDateFilter(prev => ({ 
-                    ...prev, 
-                    endDate: e.target.value,
-                    quickFilter: 'all'
-                  }))}
+                  onChange={(e) =>
+                    setDateFilter((prev) => ({
+                      ...prev,
+                      endDate: e.target.value,
+                      quickFilter: "all",
+                    }))
+                  }
                   className="w-full p-2 border border-black font-mono text-sm bg-white focus:outline-none focus:ring-2 focus:ring-black"
                 />
               </div>
 
               <div className="flex items-end">
                 <TextButton
-                  onClick={() => setDateFilter({
-                    startDate: '',
-                    endDate: '',
-                    quickFilter: 'all'
-                  })}
+                  onClick={() =>
+                    setDateFilter({
+                      startDate: "",
+                      endDate: "",
+                      quickFilter: "all",
+                    })
+                  }
                   variant="default"
                   className="px-4 py-2 w-full"
                 >
@@ -449,7 +473,7 @@ export default function WorklogSection() {
             <div className="mt-3 pt-3 border-t border-gray-300">
               <TextHierarchy level={2} muted>
                 Showing {filteredWorklogs.length} of {worklogs.length} entries
-                {dateFilter.quickFilter !== 'all' && (
+                {dateFilter.quickFilter !== "all" && (
                   <TextBadge variant="default" className="ml-2">
                     {dateFilter.quickFilter.toUpperCase()}
                   </TextBadge>
@@ -476,7 +500,9 @@ export default function WorklogSection() {
 
           {/* Worklog Form */}
           {showForm && (
-            <TextCard title={editingWorklog ? "EDIT WORKLOG" : "ADD NEW WORKLOG"}>
+            <TextCard
+              title={editingWorklog ? "EDIT WORKLOG" : "ADD NEW WORKLOG"}
+            >
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -486,7 +512,12 @@ export default function WorklogSection() {
                     <input
                       type="text"
                       value={formData.title}
-                      onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          title: e.target.value,
+                        }))
+                      }
                       className="w-full p-3 border border-black font-mono text-sm bg-white focus:outline-none focus:ring-2 focus:ring-black"
                       required
                     />
@@ -499,7 +530,12 @@ export default function WorklogSection() {
                     <input
                       type="date"
                       value={formData.date}
-                      onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          date: e.target.value,
+                        }))
+                      }
                       className="w-full p-3 border border-black font-mono text-sm bg-white focus:outline-none focus:ring-2 focus:ring-black"
                       required
                     />
@@ -515,7 +551,12 @@ export default function WorklogSection() {
                       min="0"
                       max="24"
                       value={formData.hours}
-                      onChange={(e) => setFormData(prev => ({ ...prev, hours: e.target.value }))}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          hours: e.target.value,
+                        }))
+                      }
                       className="w-full p-3 border border-black font-mono text-sm bg-white focus:outline-none focus:ring-2 focus:ring-black"
                       required
                     />
@@ -527,12 +568,19 @@ export default function WorklogSection() {
                     </TextHierarchy>
                     <select
                       value={formData.category}
-                      onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          category: e.target.value,
+                        }))
+                      }
                       className="w-full p-3 border border-black font-mono text-sm bg-white focus:outline-none focus:ring-2 focus:ring-black"
                     >
                       <option value="">Select category</option>
-                      {CATEGORIES.map(cat => (
-                        <option key={cat} value={cat}>{cat}</option>
+                      {CATEGORIES.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -544,7 +592,12 @@ export default function WorklogSection() {
                     <input
                       type="text"
                       value={formData.project}
-                      onChange={(e) => setFormData(prev => ({ ...prev, project: e.target.value }))}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          project: e.target.value,
+                        }))
+                      }
                       className="w-full p-3 border border-black font-mono text-sm bg-white focus:outline-none focus:ring-2 focus:ring-black"
                     />
                   </div>
@@ -555,7 +608,12 @@ export default function WorklogSection() {
                     </TextHierarchy>
                     <textarea
                       value={formData.description}
-                      onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          description: e.target.value,
+                        }))
+                      }
                       rows={3}
                       className="w-full p-3 border border-black font-mono text-sm bg-white focus:outline-none focus:ring-2 focus:ring-black"
                     />
@@ -566,30 +624,34 @@ export default function WorklogSection() {
                   <TextButton
                     type="button"
                     onClick={() => {
-                      setShowForm(false)
-                      setEditingWorklog(null)
+                      setShowForm(false);
+                      setEditingWorklog(null);
                       setFormData({
-                        title: '',
-                        description: '',
-                        date: new Date().toISOString().split('T')[0],
-                        hours: '',
-                        project: '',
-                        category: ''
-                      })
+                        title: "",
+                        description: "",
+                        date: new Date().toISOString().split("T")[0],
+                        hours: "",
+                        project: "",
+                        category: "",
+                      });
                     }}
                     variant="default"
                     className="px-6 py-2"
                   >
                     CANCEL
                   </TextButton>
-                  
+
                   <TextButton
                     type="submit"
                     variant="success"
                     disabled={isLoading}
                     className="px-6 py-2"
                   >
-                    {isLoading ? 'SAVING...' : (editingWorklog ? 'UPDATE' : 'SAVE')}
+                    {isLoading
+                      ? "SAVING..."
+                      : editingWorklog
+                      ? "UPDATE"
+                      : "SAVE"}
                   </TextButton>
                 </div>
               </form>
@@ -599,22 +661,32 @@ export default function WorklogSection() {
           {/* Worklog List */}
           {isLoading && worklogs.length === 0 ? (
             <TextCard variant="muted">
-              <TextHierarchy level={1} muted>Loading worklogs...</TextHierarchy>
+              <TextHierarchy level={1} muted>
+                Loading worklogs...
+              </TextHierarchy>
             </TextCard>
           ) : worklogs.length === 0 ? (
             <TextCard variant="muted">
-              <TextHierarchy level={1} muted>No worklogs found. Add your first entry!</TextHierarchy>
+              <TextHierarchy level={1} muted>
+                No worklogs found. Add your first entry!
+              </TextHierarchy>
             </TextCard>
           ) : filteredWorklogs.length === 0 ? (
             <TextCard variant="muted">
-              <TextHierarchy level={1} muted>No worklogs found for the selected date range.</TextHierarchy>
+              <TextHierarchy level={1} muted>
+                No worklogs found for the selected date range.
+              </TextHierarchy>
             </TextCard>
           ) : (
             <div className="space-y-3">
               {filteredWorklogs.map((worklog) => (
                 <TextCard key={worklog.id}>
                   <div className="mb-4">
-                    <TextHierarchy level={1} emphasis className="text-green-600 text-lg">
+                    <TextHierarchy
+                      level={1}
+                      emphasis
+                      className="text-green-600 text-lg"
+                    >
                       {worklog.title}
                     </TextHierarchy>
                   </div>
@@ -623,24 +695,31 @@ export default function WorklogSection() {
                     <div className="flex flex-col gap-3">
                       {/* Row 1: ID */}
                       <div className="flex items-center gap-3">
-                        <div 
+                        <div
                           className="relative"
                           onMouseEnter={() => handleMouseEnter(worklog.id)}
                           onMouseLeave={handleMouseLeave}
                         >
-                          <TextBadge variant="muted" className="text-xs px-2 py-1 cursor-pointer">
+                          <TextBadge
+                            variant="muted"
+                            className="text-xs px-2 py-1 cursor-pointer"
+                          >
                             ID: {worklog.id.slice(0, 8)}...
                           </TextBadge>
-                          
+
                           {/* Hover Popup */}
                           {hoveredId === worklog.id && (
-                            <div 
+                            <div
                               className="absolute top-full left-0 mt-1 z-50 bg-white border border-black p-3 shadow-lg min-w-64"
                               onMouseEnter={() => handleMouseEnter(worklog.id)}
                               onMouseLeave={handleMouseLeave}
                             >
                               <div className="space-y-2">
-                                <TextHierarchy level={2} emphasis className="text-xs">
+                                <TextHierarchy
+                                  level={2}
+                                  emphasis
+                                  className="text-xs"
+                                >
                                   FULL ID
                                 </TextHierarchy>
                                 <div className="font-mono text-xs bg-gray-100 p-2 border rounded break-all">
@@ -661,11 +740,17 @@ export default function WorklogSection() {
                       {/* Row 2: Category + Hours */}
                       <div className="flex items-center gap-3">
                         {worklog.category && (
-                          <TextBadge variant="default" className="text-sm px-3 py-1">
+                          <TextBadge
+                            variant="default"
+                            className="text-sm px-3 py-1"
+                          >
                             {worklog.category}
                           </TextBadge>
                         )}
-                        <TextBadge variant="success" className="text-sm px-3 py-1">
+                        <TextBadge
+                          variant="success"
+                          className="text-sm px-3 py-1"
+                        >
                           {worklog.hours}h
                         </TextBadge>
                       </div>
@@ -698,7 +783,7 @@ export default function WorklogSection() {
                           {formatDate(worklog.date)}
                         </TextHierarchy>
                       </div>
-                      
+
                       {worklog.project && (
                         <div>
                           <TextHierarchy level={1} emphasis className="mb-1">
@@ -718,32 +803,38 @@ export default function WorklogSection() {
                           CREATED
                         </TextHierarchy>
                         <TextHierarchy level={2} muted>
-                          {new Date(worklog.created_at).toLocaleString('en-US', {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
+                          {new Date(worklog.created_at).toLocaleString(
+                            "en-US",
+                            {
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            }
+                          )}
                         </TextHierarchy>
                       </div>
-                      
+
                       <div>
                         <TextHierarchy level={1} emphasis className="mb-1">
                           LAST UPDATED
                         </TextHierarchy>
                         <TextHierarchy level={2} muted>
-                          {new Date(worklog.updated_at).toLocaleString('en-US', {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
+                          {new Date(worklog.updated_at).toLocaleString(
+                            "en-US",
+                            {
+                              year: "numeric",
+                              month: "short",
+                              day: "numeric",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            }
+                          )}
                         </TextHierarchy>
                       </div>
                     </div>
-                    
+
                     {/* Description */}
                     {worklog.description && (
                       <div>
@@ -763,5 +854,5 @@ export default function WorklogSection() {
         </div>
       </TextCard>
     </div>
-  )
+  );
 }

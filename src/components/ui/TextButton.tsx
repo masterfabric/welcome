@@ -2,6 +2,7 @@ interface TextButtonProps {
   children: React.ReactNode
   onClick?: () => void
   variant?: 'default' | 'success' | 'warning' | 'error'
+  size?: 'default' | 'small'
   disabled?: boolean
   type?: 'button' | 'submit' | 'reset'
   className?: string
@@ -11,6 +12,7 @@ export default function TextButton({
   children, 
   onClick, 
   variant = 'default', 
+  size = 'default',
   disabled = false,
   type = 'button',
   className = '' 
@@ -22,6 +24,11 @@ export default function TextButton({
     error: 'error'
   }
 
+  const sizeClasses = {
+    default: 'px-4 py-2 text-sm',
+    small: 'px-2 py-1 text-xs'
+  }
+
   const disabledClasses = disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
 
   return (
@@ -30,9 +37,9 @@ export default function TextButton({
       onClick={onClick}
       disabled={disabled}
       className={`
-        inline-block px-4 py-2 border font-mono font-medium
-        transition-colors duration-200 text-sm uppercase tracking-wide
-        ${variantClasses[variant]} ${disabledClasses} ${className}
+        inline-block border font-mono font-medium
+        transition-colors duration-200 uppercase tracking-wide
+        ${sizeClasses[size]} ${variantClasses[variant]} ${disabledClasses} ${className}
       `}
     >
       {children}
